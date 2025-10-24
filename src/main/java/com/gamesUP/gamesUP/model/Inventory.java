@@ -1,9 +1,24 @@
 package com.gamesUP.gamesUP.model;
 
-import java.util.HashMap;
+import jakarta.persistence.*;
+import lombok.Data;
+import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "inventory")
+@Data
 public class Inventory {
-
-	HashMap<Game, Integer> stock;
-	
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
+    private Integer quantity;
+    
+    private LocalDateTime lastRestock;
+    
+    @OneToOne
+    @JoinColumn(name = "game_id", nullable = false)
+    private Game game;
 }

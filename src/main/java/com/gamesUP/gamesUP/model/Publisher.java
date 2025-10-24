@@ -1,7 +1,24 @@
 package com.gamesUP.gamesUP.model;
 
-public class Publisher {
+import jakarta.persistence.*;
+import lombok.Data;
+import java.util.ArrayList;
+import java.util.List;
 
-	
-	String name;
+@Entity
+@Table(name = "publishers")
+@Data
+public class Publisher {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(nullable = false)
+    private String name;
+    
+    private String contactInfo;
+    
+    @OneToMany(mappedBy = "publisher")
+    private List<Game> games = new ArrayList<>();
 }

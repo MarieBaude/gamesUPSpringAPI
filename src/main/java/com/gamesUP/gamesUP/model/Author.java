@@ -1,13 +1,24 @@
 package com.gamesUP.gamesUP.model;
 
+import jakarta.persistence.*;
+import lombok.Data;
+import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "authors")
+@Data
 public class Author {
-
-    public Long id;
     
-    public String name;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     
-    public List<Game> games;
-
+    @Column(nullable = false)
+    private String name;
+    
+    private String biography;
+    
+    @ManyToMany(mappedBy = "authors")
+    private List<Game> games = new ArrayList<>();
 }
