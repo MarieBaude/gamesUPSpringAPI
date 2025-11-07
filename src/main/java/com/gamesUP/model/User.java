@@ -1,4 +1,4 @@
-package com.gamesUP.gamesUP.model;
+package com.gamesUP.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -22,5 +22,6 @@ public class User {
     private String password;
     
     @Enumerated(EnumType.STRING)
-    private Role role;
+    @Column(nullable = false)
+    private Role role = Role.ROLE_CLIENT;
 }

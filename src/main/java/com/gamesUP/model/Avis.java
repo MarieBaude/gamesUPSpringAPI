@@ -1,19 +1,25 @@
-package com.gamesUP.gamesUP.model;
+package com.gamesUP.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "wishlist")
+@Table(name = "reviews") 
 @Data
-public class Wishlist {
+public class Avis {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    private LocalDateTime addedDate;
+    @Column(length = 1000)
+    private String comment;
+    
+    @Column(nullable = false)
+    private Integer rating; 
+    
+    private LocalDateTime createdDate;
     
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

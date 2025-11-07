@@ -1,13 +1,12 @@
-package com.gamesUP.gamesUP.model;
+package com.gamesUP.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "inventory")
+@Table(name = "purchase_lines")
 @Data
-public class Inventory {
+public class PurchaseLine {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -16,9 +15,14 @@ public class Inventory {
     @Column(nullable = false)
     private Integer quantity;
     
-    private LocalDateTime lastRestock;
+    @Column(nullable = false)
+    private Double unitPrice;
     
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
+    
+    @ManyToOne
+    @JoinColumn(name = "purchase_id", nullable = false)
+    private Purchase purchase;
 }

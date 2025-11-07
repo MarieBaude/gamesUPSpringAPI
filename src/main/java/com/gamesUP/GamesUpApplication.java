@@ -1,4 +1,4 @@
-package com.gamesUP.gamesUP;
+package com.gamesUP;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

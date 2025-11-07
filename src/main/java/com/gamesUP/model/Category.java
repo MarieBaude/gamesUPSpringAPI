@@ -1,4 +1,4 @@
-package com.gamesUP.gamesUP.model;
+package com.gamesUP.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
