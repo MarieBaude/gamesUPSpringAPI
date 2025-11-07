@@ -6,6 +6,9 @@ import com.gamesUP.dto.response.JwtResponse;
 import com.gamesUP.model.User;
 import com.gamesUP.repository.UserRepository;
 import com.gamesUP.security.JwtUtil;
+
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -68,5 +71,11 @@ public class AuthController {
         userRepository.save(user);
         
         return ResponseEntity.ok("User registered successfully");
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<User>> getAllUsers() {
+        List<User> users = userRepository.findAll();
+        return ResponseEntity.ok(users);
     }
 }
