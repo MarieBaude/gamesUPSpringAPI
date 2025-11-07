@@ -15,15 +15,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) 
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/games/**", "/api/categories/**").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .anyRequest().authenticated()
-            )
-            .httpBasic(withDefaults -> {}) 
-        ;
-        
+                    .requestMatchers(
+                            "/swagger-ui.html",
+                            "/swagger-ui/**",
+                            "/v3/api-docs/**",
+                            "/webjars/**")
+                    .permitAll()
+
+                    .requestMatchers("/api/auth/**", "/api/games/**", "/api/categories/**").permitAll()
+
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                    .anyRequest().authenticated())
+            .httpBasic(withDefaults -> {
+            });
+
         return http.build();
     }
 
