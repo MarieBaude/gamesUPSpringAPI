@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 import com.gamesUP.security.JwtAuthFilter;
 
@@ -36,7 +37,10 @@ public class SecurityConfig {
                         "/webjars/**")
                 .permitAll()
                 .requestMatchers("/api/auth/**", "/api/games/**", "/api/categories/**").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/users/me").authenticated()
+
+                .requestMatchers("/api/admin/**", "/api/users/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

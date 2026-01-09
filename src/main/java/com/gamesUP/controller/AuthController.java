@@ -7,6 +7,9 @@ import com.gamesUP.model.User;
 import com.gamesUP.repository.UserRepository;
 import com.gamesUP.security.JwtUtil;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentification", description = "Endpoints d'authentification et d'inscription")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -38,6 +42,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Connexion", description = "Authentifie un utilisateur et retourne un token JWT")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
@@ -53,6 +58,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Inscription", description = "Crée un nouveau compte utilisateur avec le rôle CLIENT")
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
         if (userRepository.existsByUsername(registerRequest.getUsername())) {
             return ResponseEntity.badRequest().body("Username already taken");
@@ -73,9 +79,4 @@ public class AuthController {
         return ResponseEntity.ok("User registered successfully");
     }
 
-    @GetMapping("/users")
-    public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userRepository.findAll();
-        return ResponseEntity.ok(users);
-    }
 }
