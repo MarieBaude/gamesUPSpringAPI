@@ -5,7 +5,9 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "wishlist")
+@Table(name = "wishlist", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"user_id", "game_id"})
+})
 @Data
 public class Wishlist {
     
@@ -13,6 +15,7 @@ public class Wishlist {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @Column(nullable = false)
     private LocalDateTime addedDate;
     
     @ManyToOne
@@ -22,4 +25,9 @@ public class Wishlist {
     @ManyToOne
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
+    
+    @PrePersist
+    protected void onCreate() {
+        addedDate = LocalDateTime.now();
+    }
 }
