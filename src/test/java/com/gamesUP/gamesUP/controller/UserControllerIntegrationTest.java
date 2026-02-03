@@ -6,6 +6,7 @@ import com.gamesUP.model.Role;
 import com.gamesUP.model.User;
 import com.gamesUP.repository.UserRepository;
 import com.gamesUP.security.JwtUtil;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,8 +15,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -24,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
+@Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class UserControllerIntegrationTest {
 
     @Autowired
@@ -49,8 +50,6 @@ class UserControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        userRepository.deleteAll();
-
         // Créer un utilisateur CLIENT
         clientUser = new User();
         clientUser.setUsername("client");
@@ -85,14 +84,14 @@ class UserControllerIntegrationTest {
     @Test
     void getMyProfile_ShouldReturnUnauthorized_WhenNotAuthenticated() throws Exception {
         mockMvc.perform(get("/api/users/me"))
-                .andExpect(status().isForbidden()); // Spring Security retourne 403 sans token
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void getMyProfile_ShouldReturnUnauthorized_WhenInvalidToken() throws Exception {
         mockMvc.perform(get("/api/users/me")
                         .header("Authorization", "Bearer invalid_token"))
-                .andExpect(status().isForbidden()); // ✅ Reste 403 car le filtre ignore le token
+                .andExpect(status().isForbidden());
     }
 
     // ========== Tests PUT /api/users/me ==========
@@ -125,16 +124,16 @@ class UserControllerIntegrationTest {
         otherUser.setPassword(passwordEncoder.encode("password"));
         otherUser.setRole(Role.ROLE_CLIENT);
         userRepository.save(otherUser);
-    
+
         UpdateProfileRequest request = new UpdateProfileRequest();
-        request.setUsername("existinguser");
+        request.setUsername("existinguser"); // Username déjà pris
         request.setEmail("client@example.com");
-    
+
         mockMvc.perform(put("/api/users/me")
                         .header("Authorization", "Bearer " + clientToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest()) // ✅ Maintenant 400 grâce au GlobalExceptionHandler
+                .andExpect(status().isBadRequest())
                 .andExpect(content().string(containsString("Ce nom d'utilisateur est déjà pris")));
     }
 
@@ -196,7 +195,7 @@ class UserControllerIntegrationTest {
     void getUserById_ShouldReturnNotFound_WhenUserDoesNotExist() throws Exception {
         mockMvc.perform(get("/api/users/999")
                         .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isNotFound()) // ✅ Maintenant 404
+                .andExpect(status().isNotFound())
                 .andExpect(content().string(containsString("Utilisateur non trouvé")));
     }
 
@@ -226,7 +225,7 @@ class UserControllerIntegrationTest {
     void deleteUser_ShouldReturnNotFound_WhenUserDoesNotExist() throws Exception {
         mockMvc.perform(delete("/api/users/999")
                         .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isNotFound()) // ✅ Maintenant 404
+                .andExpect(status().isNotFound())
                 .andExpect(content().string(containsString("Utilisateur non trouvé")));
     }
 }
