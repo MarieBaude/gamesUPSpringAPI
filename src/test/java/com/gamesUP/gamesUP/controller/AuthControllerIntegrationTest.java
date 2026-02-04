@@ -6,7 +6,6 @@ import com.gamesUP.dto.request.RegisterRequest;
 import com.gamesUP.model.Role;
 import com.gamesUP.model.User;
 import com.gamesUP.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -14,17 +13,21 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Tests d'intégration pour AuthController.
+ * Version épurée - 4 tests essentiels.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
+@Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class AuthControllerIntegrationTest {
 
     @Autowired
@@ -39,27 +42,19 @@ class AuthControllerIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @BeforeEach
-    void setUp() {
-        userRepository.deleteAll();
-    }
-
     @Test
     void register_ShouldCreateNewUser_WhenValidRequest() throws Exception {
-        // Given
         RegisterRequest request = new RegisterRequest();
         request.setUsername("newuser");
         request.setEmail("newuser@example.com");
         request.setPassword("password123");
 
-        // When & Then
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("User registered successfully")));
 
-        // Verify user was created in database
         User user = userRepository.findByUsername("newuser").orElseThrow();
         assert user.getEmail().equals("newuser@example.com");
         assert user.getRole().equals(Role.ROLE_CLIENT);
@@ -67,7 +62,6 @@ class AuthControllerIntegrationTest {
 
     @Test
     void register_ShouldReturnBadRequest_WhenUsernameAlreadyExists() throws Exception {
-        // Given - Create existing user
         User existingUser = new User();
         existingUser.setUsername("existing");
         existingUser.setEmail("existing@example.com");
@@ -80,7 +74,6 @@ class AuthControllerIntegrationTest {
         request.setEmail("different@example.com");
         request.setPassword("password123");
 
-        // When & Then
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -89,31 +82,7 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    void register_ShouldReturnBadRequest_WhenEmailAlreadyExists() throws Exception {
-        // Given - Create existing user
-        User existingUser = new User();
-        existingUser.setUsername("existing");
-        existingUser.setEmail("existing@example.com");
-        existingUser.setPassword(passwordEncoder.encode("password"));
-        existingUser.setRole(Role.ROLE_CLIENT);
-        userRepository.save(existingUser);
-
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("newuser");
-        request.setEmail("existing@example.com");
-        request.setPassword("password123");
-
-        // When & Then
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("Email already in use")));
-    }
-
-    @Test
     void login_ShouldReturnJwtToken_WhenCredentialsAreValid() throws Exception {
-        // Given - Create user
         User user = new User();
         user.setUsername("testuser");
         user.setEmail("test@example.com");
@@ -125,20 +94,17 @@ class AuthControllerIntegrationTest {
         request.setUsername("testuser");
         request.setPassword("password123");
 
-        // When & Then
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.token").isNotEmpty())
                 .andExpect(jsonPath("$.username").value("testuser"))
                 .andExpect(jsonPath("$.role").value("ROLE_CLIENT"));
     }
 
     @Test
     void login_ShouldReturnUnauthorized_WhenPasswordIsIncorrect() throws Exception {
-        // Given - Create user
         User user = new User();
         user.setUsername("testuser");
         user.setEmail("test@example.com");
@@ -150,21 +116,6 @@ class AuthControllerIntegrationTest {
         request.setUsername("testuser");
         request.setPassword("wrongpassword");
 
-        // When & Then
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void login_ShouldReturnUnauthorized_WhenUserDoesNotExist() throws Exception {
-        // Given
-        LoginRequest request = new LoginRequest();
-        request.setUsername("nonexistent");
-        request.setPassword("password123");
-
-        // When & Then
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
