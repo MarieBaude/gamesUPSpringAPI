@@ -48,7 +48,6 @@ public class SecurityConfig {
                 // Routes authentifiées (CLIENT + ADMIN)
                 .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/users/me").authenticated()
-                .requestMatchers("/api/wishlist/**").authenticated()
                 
                 // Routes ADMIN uniquement pour les jeux
                 .requestMatchers(HttpMethod.POST, "/api/games/**").hasRole("ADMIN")

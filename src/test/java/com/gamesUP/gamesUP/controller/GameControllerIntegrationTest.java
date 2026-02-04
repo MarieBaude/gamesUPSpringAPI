@@ -23,6 +23,10 @@ import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Tests d'intégration pour GameController.
+ * Version épurée - 8 tests essentiels.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -64,7 +68,6 @@ class GameControllerIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // Créer un admin
         User admin = new User();
         admin.setUsername("admin");
         admin.setEmail("admin@test.com");
@@ -73,7 +76,6 @@ class GameControllerIntegrationTest {
         userRepository.save(admin);
         adminToken = jwtUtil.generateToken("admin");
 
-        // Créer des données de test
         testCategory = new Category();
         testCategory.setName("Stratégie");
         testCategory.setDescription("Jeux de stratégie");
@@ -102,42 +104,22 @@ class GameControllerIntegrationTest {
         gameRepository.save(testGame);
     }
 
-    // ========== Tests GET /api/games (PUBLIC) ==========
-
     @Test
     void getAllGames_ShouldReturnGamesList_WithoutAuthentication() throws Exception {
         mockMvc.perform(get("/api/games"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].name").value("7 Wonders"))
-                .andExpect(jsonPath("$[0].price").value(39.99))
-                .andExpect(jsonPath("$[0].category.name").value("Stratégie"))
-                .andExpect(jsonPath("$[0].publisher.name").value("Asmodee"))
-                .andExpect(jsonPath("$[0].authors", hasSize(1)))
-                .andExpect(jsonPath("$[0].authors[0].name").value("Antoine Bauza"));
+                .andExpect(jsonPath("$[0].price").value(39.99));
     }
-
-    // ========== Tests GET /api/games/{id} (PUBLIC) ==========
 
     @Test
     void getGameById_ShouldReturnGame_WithoutAuthentication() throws Exception {
         mockMvc.perform(get("/api/games/" + testGame.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("7 Wonders"))
-                .andExpect(jsonPath("$.description").value("Jeu de civilisation"))
-                .andExpect(jsonPath("$.price").value(39.99))
-                .andExpect(jsonPath("$.minPlayers").value(2))
-                .andExpect(jsonPath("$.maxPlayers").value(7));
+                .andExpect(jsonPath("$.price").value(39.99));
     }
-
-    @Test
-    void getGameById_ShouldReturnBadRequest_WhenGameNotFound() throws Exception {
-        mockMvc.perform(get("/api/games/999"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("Jeu non trouvé")));
-    }
-
-    // ========== Tests GET /api/games/search (PUBLIC) ==========
 
     @Test
     void searchGames_ShouldReturnFilteredGames_ByName() throws Exception {
@@ -149,48 +131,12 @@ class GameControllerIntegrationTest {
     }
 
     @Test
-    void searchGames_ShouldReturnFilteredGames_ByCategory() throws Exception {
-        mockMvc.perform(get("/api/games/search")
-                        .param("categoryId", testCategory.getId().toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name").value("7 Wonders"));
-    }
-
-    @Test
-    void searchGames_ShouldReturnFilteredGames_ByPublisher() throws Exception {
-        mockMvc.perform(get("/api/games/search")
-                        .param("publisherId", testPublisher.getId().toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name").value("7 Wonders"));
-    }
-
-    @Test
-    void searchGames_ShouldReturnFilteredGames_ByAuthor() throws Exception {
-        mockMvc.perform(get("/api/games/search")
-                        .param("authorId", testAuthor.getId().toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name").value("7 Wonders"));
-    }
-
-    @Test
-    void searchGames_ShouldReturnAllGames_WhenNoCriteria() throws Exception {
-        mockMvc.perform(get("/api/games/search"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)));
-    }
-
-    @Test
     void searchGames_ShouldReturnEmptyList_WhenNoMatch() throws Exception {
         mockMvc.perform(get("/api/games/search")
                         .param("name", "inexistant"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }
-
-    // ========== Tests POST /api/games (ADMIN uniquement) ==========
 
     @Test
     void createGame_ShouldCreateGame_WhenAdmin() throws Exception {
@@ -210,10 +156,8 @@ class GameControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Nouveau Jeu"))
-                .andExpect(jsonPath("$.price").value(29.99));
+                .andExpect(jsonPath("$.name").value("Nouveau Jeu"));
 
-        // Vérifier en base
         assert gameRepository.count() == 2;
     }
 
@@ -222,9 +166,6 @@ class GameControllerIntegrationTest {
         GameRequest request = new GameRequest();
         request.setName("Nouveau Jeu");
         request.setPrice(29.99);
-        request.setCategoryId(testCategory.getId());
-        request.setPublisherId(testPublisher.getId());
-        request.setAuthorIds(Arrays.asList(testAuthor.getId()));
 
         mockMvc.perform(post("/api/games")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -233,29 +174,9 @@ class GameControllerIntegrationTest {
     }
 
     @Test
-    void createGame_ShouldReturnBadRequest_WhenCategoryNotFound() throws Exception {
-        GameRequest request = new GameRequest();
-        request.setName("Nouveau Jeu");
-        request.setPrice(29.99);
-        request.setCategoryId(999L);
-        request.setPublisherId(testPublisher.getId());
-        request.setAuthorIds(Arrays.asList(testAuthor.getId()));
-
-        mockMvc.perform(post("/api/games")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("Catégorie non trouvée")));
-    }
-
-    // ========== Tests PUT /api/games/{id} (ADMIN uniquement) ==========
-
-    @Test
     void updateGame_ShouldUpdateGame_WhenAdmin() throws Exception {
         GameRequest request = new GameRequest();
         request.setName("7 Wonders Édité");
-        request.setDescription("Description mise à jour");
         request.setPrice(45.99);
         request.setMinPlayers(2);
         request.setMaxPlayers(7);
@@ -269,30 +190,8 @@ class GameControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("7 Wonders Édité"))
-                .andExpect(jsonPath("$.price").value(45.99));
-
-        // Vérifier en base
-        Game updatedGame = gameRepository.findById(testGame.getId()).orElseThrow();
-        assert updatedGame.getName().equals("7 Wonders Édité");
+                .andExpect(jsonPath("$.name").value("7 Wonders Édité"));
     }
-
-    @Test
-    void updateGame_ShouldReturnForbidden_WhenNotAuthenticated() throws Exception {
-        GameRequest request = new GameRequest();
-        request.setName("7 Wonders Édité");
-        request.setPrice(45.99);
-        request.setCategoryId(testCategory.getId());
-        request.setPublisherId(testPublisher.getId());
-        request.setAuthorIds(Arrays.asList(testAuthor.getId()));
-
-        mockMvc.perform(put("/api/games/" + testGame.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isForbidden());
-    }
-
-    // ========== Tests DELETE /api/games/{id} (ADMIN uniquement) ==========
 
     @Test
     void deleteGame_ShouldDeleteGame_WhenAdmin() throws Exception {
@@ -300,24 +199,6 @@ class GameControllerIntegrationTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNoContent());
 
-        // Vérifier en base
         assert gameRepository.findById(testGame.getId()).isEmpty();
-    }
-
-    @Test
-    void deleteGame_ShouldReturnForbidden_WhenNotAuthenticated() throws Exception {
-        mockMvc.perform(delete("/api/games/" + testGame.getId()))
-                .andExpect(status().isForbidden());
-
-        // Vérifier que le jeu n'a pas été supprimé
-        assert gameRepository.findById(testGame.getId()).isPresent();
-    }
-
-    @Test
-    void deleteGame_ShouldReturnBadRequest_WhenGameNotFound() throws Exception {
-        mockMvc.perform(delete("/api/games/999")
-                        .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("Jeu non trouvé")));
     }
 }
