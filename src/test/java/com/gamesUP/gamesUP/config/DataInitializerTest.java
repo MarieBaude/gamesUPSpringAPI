@@ -45,6 +45,9 @@ class DataInitializerTest {
     @Autowired
     private GameRepository gameRepository;
 
+    @Autowired
+    private PurchaseRepository purchaseRepository;
+
     private DataInitializer dataInitializer;
 
     @BeforeEach
@@ -61,7 +64,8 @@ class DataInitializerTest {
             categoryRepository,
             publisherRepository,
             authorRepository,
-            gameRepository
+            gameRepository,
+            purchaseRepository
         );
     }
 

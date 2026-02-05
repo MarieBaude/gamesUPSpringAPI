@@ -101,4 +101,12 @@ public class UserService {
                 .role(user.getRole())
                 .build();
     }
+
+    /**
+     * Trouve un utilisateur par son username.
+     */
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Utilisateur non trouvé : " + username));
+    }
 }

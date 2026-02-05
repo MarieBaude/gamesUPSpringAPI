@@ -18,7 +18,7 @@ import com.gamesUP.security.JwtAuthFilter;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity  // ← AJOUTER pour @PreAuthorize
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -32,7 +32,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // Swagger public
+                // 1. ROUTES PUBLIQUES (en premier)
                 .requestMatchers(
                     "/swagger-ui.html",
                     "/swagger-ui/**",
@@ -40,29 +40,38 @@ public class SecurityConfig {
                     "/webjars/**")
                 .permitAll()
                 
-                // Routes publiques
+                // 2. AUTH publique
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/games/**").permitAll()  // ← GET seulement
+                
+                // 3. CATEGORIES publiques
                 .requestMatchers("/api/categories/**").permitAll()
                 
-                // Routes authentifiées (CLIENT + ADMIN)
-                .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
-                .requestMatchers(HttpMethod.PUT, "/api/users/me").authenticated()
-                
-                // Routes ADMIN uniquement pour les jeux
+                // 4. GAMES - Lecture publique, modification ADMIN
+                .requestMatchers(HttpMethod.GET, "/api/games/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/games/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/games/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/games/**").hasRole("ADMIN")
                 
-                // Autres routes ADMIN
-                .requestMatchers("/api/admin/**", "/api/users/**").hasRole("ADMIN")
+                // 5. USERS - ORDRE IMPORTANT : règles spécifiques AVANT génériques
+                .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/users/me").authenticated()
+                .requestMatchers("/api/users/**").hasRole("ADMIN")
                 
-                // Toutes les autres routes nécessitent une authentification
+                // 6. PURCHASES - Authentifié pour tous (CLIENT + ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/purchases").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/purchases").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/purchases/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/purchases/*/status").hasRole("ADMIN")
+                
+                // 7. ADMIN routes
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                
+                // 8. Toutes les autres routes nécessitent authentification
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
 
