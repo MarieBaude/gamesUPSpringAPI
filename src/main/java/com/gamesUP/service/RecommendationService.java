@@ -77,6 +77,7 @@ public class RecommendationService {
                         }
                 ));
 
+        // Dédupliquer par game_id en gardant le score le plus élevé, puis trier desc
         return pythonRecs.stream()
                 .map(rec -> {
                     Game game = gamesById.get(rec.getGameId());
@@ -88,6 +89,13 @@ public class RecommendationService {
                             game != null ? game.getPrice() : null
                     );
                 })
+                .collect(Collectors.toMap(
+                        RecommendationResponse::getGameId,
+                        r -> r,
+                        (r1, r2) -> r1.getScore() >= r2.getScore() ? r1 : r2
+                ))
+                .values().stream()
+                .sorted((r1, r2) -> Double.compare(r2.getScore(), r1.getScore()))
                 .collect(Collectors.toList());
     }
 
