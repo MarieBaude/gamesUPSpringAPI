@@ -62,11 +62,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/purchases").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/purchases/**").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/purchases/*/status").hasRole("ADMIN")
+
+                // Notation
+                .requestMatchers(HttpMethod.GET, "/api/ratings/game/**").permitAll() // ✅ AJOUTER : notes publiques
+                .requestMatchers(HttpMethod.GET, "/api/ratings/user/**").permitAll() // ✅ AJOUTER : profil public
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 
-                // 7. ADMIN routes
+                // ADMIN routes
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
-                // 8. Toutes les autres routes nécessitent authentification
+                // Toutes les autres routes nécessitent authentification
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

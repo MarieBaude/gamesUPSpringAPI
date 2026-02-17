@@ -120,7 +120,7 @@ class UserControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().string(containsString("Ce nom d'utilisateur est déjà pris")));
+                .andExpect(jsonPath("$.message").value(containsString("nom d'utilisateur")));
     }
 
     @Test
