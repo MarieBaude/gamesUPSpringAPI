@@ -6,10 +6,7 @@ import com.gamesUP.model.Author;
 import com.gamesUP.model.Category;
 import com.gamesUP.model.Game;
 import com.gamesUP.model.Publisher;
-import com.gamesUP.repository.AuthorRepository;
-import com.gamesUP.repository.CategoryRepository;
-import com.gamesUP.repository.GameRepository;
-import com.gamesUP.repository.PublisherRepository;
+import com.gamesUP.repository.*;
 import com.gamesUP.service.GameService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,33 +17,28 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 /**
  * Tests unitaires pour GameService.
- * Optimisé pour 70% de couverture instructions ET branches.
+ * ⚠️ RatingRepository ajouté car GameService l'injecte désormais
+ * pour calculer les statistiques de notation.
  */
 @ExtendWith(MockitoExtension.class)
 class GameServiceTest {
 
-    @Mock
-    private GameRepository gameRepository;
-
-    @Mock
-    private CategoryRepository categoryRepository;
-
-    @Mock
-    private PublisherRepository publisherRepository;
-
-    @Mock
-    private AuthorRepository authorRepository;
+    @Mock private GameRepository gameRepository;
+    @Mock private CategoryRepository categoryRepository;
+    @Mock private PublisherRepository publisherRepository;
+    @Mock private AuthorRepository authorRepository;
+    @Mock private RatingRepository ratingRepository; // ✅ Ajout nécessaire
 
     @InjectMocks
     private GameService gameService;
@@ -81,30 +73,53 @@ class GameServiceTest {
         testGame.setAuthors(Arrays.asList(testAuthor));
     }
 
-    // ========== getAllGames ==========
+    // -------------------------------------------------------------------------
+    // getAllGames
+    // -------------------------------------------------------------------------
 
     @Test
-    void getAllGames_ShouldReturnListOfGames() {
+    void getAllGames_ShouldReturnListWithRatingStats() {
         when(gameRepository.findAll()).thenReturn(Arrays.asList(testGame));
+        when(ratingRepository.calculateAverageRatingForGame(1L)).thenReturn(7.5);
+        when(ratingRepository.countRatingsByGameId(1L)).thenReturn(10L);
 
         List<GameResponse> games = gameService.getAllGames();
 
         assertThat(games).hasSize(1);
         assertThat(games.get(0).getName()).isEqualTo("7 Wonders");
-        verify(gameRepository, times(1)).findAll();
+        assertThat(games.get(0).getAverageRating()).isEqualTo(7.5);
+        assertThat(games.get(0).getTotalRatings()).isEqualTo(10L);
+        verify(gameRepository).findAll();
     }
 
-    // ========== getGameById ==========
+    @Test
+    void getAllGames_ShouldReturnNullAverageRating_WhenNoRatingsExist() {
+        // Branch : pas encore de notes → averageRating null, totalRatings 0
+        when(gameRepository.findAll()).thenReturn(Arrays.asList(testGame));
+        when(ratingRepository.calculateAverageRatingForGame(1L)).thenReturn(null);
+        when(ratingRepository.countRatingsByGameId(1L)).thenReturn(0L);
+
+        List<GameResponse> games = gameService.getAllGames();
+
+        assertThat(games.get(0).getAverageRating()).isNull();
+        assertThat(games.get(0).getTotalRatings()).isEqualTo(0L);
+    }
+
+    // -------------------------------------------------------------------------
+    // getGameById
+    // -------------------------------------------------------------------------
 
     @Test
-    void getGameById_ShouldReturnGame_WhenGameExists() {
+    void getGameById_ShouldReturnGameWithRating_WhenExists() {
         when(gameRepository.findById(1L)).thenReturn(Optional.of(testGame));
+        when(ratingRepository.calculateAverageRatingForGame(1L)).thenReturn(8.0);
+        when(ratingRepository.countRatingsByGameId(1L)).thenReturn(5L);
 
         GameResponse game = gameService.getGameById(1L);
 
-        assertThat(game).isNotNull();
         assertThat(game.getName()).isEqualTo("7 Wonders");
-        verify(gameRepository, times(1)).findById(1L);
+        assertThat(game.getAverageRating()).isEqualTo(8.0);
+        assertThat(game.getTotalRatings()).isEqualTo(5L);
     }
 
     @Test
@@ -114,49 +129,49 @@ class GameServiceTest {
         assertThatThrownBy(() -> gameService.getGameById(999L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Jeu non trouvé");
+
+        // Aucune requête de notation si le jeu n'existe pas
+        verifyNoInteractions(ratingRepository);
     }
 
-    // ========== searchGames - Branches critiques ==========
+    // -------------------------------------------------------------------------
+    // searchGames — branches null vs non-null
+    // -------------------------------------------------------------------------
 
     @Test
-    void searchGames_ShouldReturnAllGames_WhenNoCriteria() {
-        // Branch : Tous les paramètres NULL → findAll()
+    void searchGames_ShouldCallFindAll_WhenNoCriteria() {
         when(gameRepository.findAll()).thenReturn(Arrays.asList(testGame));
+        when(ratingRepository.calculateAverageRatingForGame(anyLong())).thenReturn(null);
+        when(ratingRepository.countRatingsByGameId(anyLong())).thenReturn(0L);
 
         List<GameResponse> games = gameService.searchGames(null, null, null, null);
 
         assertThat(games).hasSize(1);
-        verify(gameRepository, times(1)).findAll();
+        verify(gameRepository).findAll();
         verify(gameRepository, never()).searchGames(any(), any(), any(), any());
     }
 
     @Test
-    void searchGames_ShouldReturnFilteredGames_WhenCriteriaProvided() {
-        // Branch : Au moins un paramètre NON NULL → searchGames()
+    void searchGames_ShouldCallSearchGames_WhenCriteriaProvided() {
         when(gameRepository.searchGames("7", null, null, null))
                 .thenReturn(Arrays.asList(testGame));
+        when(ratingRepository.calculateAverageRatingForGame(anyLong())).thenReturn(null);
+        when(ratingRepository.countRatingsByGameId(anyLong())).thenReturn(0L);
 
         List<GameResponse> games = gameService.searchGames("7", null, null, null);
 
         assertThat(games).hasSize(1);
-        assertThat(games.get(0).getName()).isEqualTo("7 Wonders");
-        verify(gameRepository, times(1)).searchGames("7", null, null, null);
+        verify(gameRepository).searchGames("7", null, null, null);
         verify(gameRepository, never()).findAll();
     }
 
-    // ========== createGame - Branches critiques ==========
+    // -------------------------------------------------------------------------
+    // createGame — branches entités manquantes
+    // -------------------------------------------------------------------------
 
     @Test
-    void createGame_ShouldCreateGame_WhenAllEntitiesExist() {
-        GameRequest request = new GameRequest();
-        request.setName("Nouveau jeu");
-        request.setPrice(29.99);
-        request.setMinPlayers(2);
-        request.setMaxPlayers(4);
-        request.setCategoryId(1L);
-        request.setPublisherId(1L);
-        request.setAuthorIds(Arrays.asList(1L));
-
+    void createGame_ShouldReturnGameWithZeroRatings_WhenCreated() {
+        GameRequest request = buildValidGameRequest();
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
         when(publisherRepository.findById(1L)).thenReturn(Optional.of(testPublisher));
         when(authorRepository.findAllById(Arrays.asList(1L))).thenReturn(Arrays.asList(testAuthor));
@@ -165,121 +180,102 @@ class GameServiceTest {
         GameResponse game = gameService.createGame(request);
 
         assertThat(game).isNotNull();
-        verify(gameRepository, times(1)).save(any(Game.class));
+        assertThat(game.getTotalRatings()).isEqualTo(0L);
+        // Pas d'appel au ratingRepository pour un nouveau jeu
+        verifyNoInteractions(ratingRepository);
+        verify(gameRepository).save(any(Game.class));
     }
 
     @Test
     void createGame_ShouldThrowException_WhenCategoryNotFound() {
-        // Branch : Catégorie introuvable
-        GameRequest request = new GameRequest();
-        request.setName("Nouveau jeu");
-        request.setCategoryId(999L);
-        request.setPublisherId(1L);
-
-        when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
+        GameRequest request = buildValidGameRequest();
+        when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> gameService.createGame(request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Catégorie non trouvée");
 
-        verify(gameRepository, never()).save(any(Game.class));
+        verify(gameRepository, never()).save(any());
     }
 
     @Test
     void createGame_ShouldThrowException_WhenPublisherNotFound() {
-        // Branch : Publisher introuvable
-        GameRequest request = new GameRequest();
-        request.setName("Nouveau jeu");
-        request.setCategoryId(1L);
-        request.setPublisherId(999L);
-
+        GameRequest request = buildValidGameRequest();
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
-        when(publisherRepository.findById(999L)).thenReturn(Optional.empty());
+        when(publisherRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> gameService.createGame(request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Éditeur non trouvé");
 
-        verify(gameRepository, never()).save(any(Game.class));
+        verify(gameRepository, never()).save(any());
     }
 
     @Test
-    void createGame_ShouldThrowException_WhenAuthorsNotFound() {
-        // Branch : Auteurs incomplets (certains IDs invalides)
-        GameRequest request = new GameRequest();
-        request.setName("Nouveau jeu");
-        request.setCategoryId(1L);
-        request.setPublisherId(1L);
-        request.setAuthorIds(Arrays.asList(1L, 999L)); // 2 IDs demandés
-
+    void createGame_ShouldThrowException_WhenAuthorsIncomplete() {
+        GameRequest request = buildValidGameRequest();
+        request.setAuthorIds(Arrays.asList(1L, 999L)); // 2 demandés, 1 trouvé
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
         when(publisherRepository.findById(1L)).thenReturn(Optional.of(testPublisher));
-        when(authorRepository.findAllById(Arrays.asList(1L, 999L)))
-                .thenReturn(Arrays.asList(testAuthor)); // Seulement 1 trouvé
+        when(authorRepository.findAllById(any())).thenReturn(Arrays.asList(testAuthor));
 
         assertThatThrownBy(() -> gameService.createGame(request))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Un ou plusieurs auteurs n'ont pas été trouvés");
+                .hasMessageContaining("auteurs n'ont pas été trouvés");
 
-        verify(gameRepository, never()).save(any(Game.class));
+        verify(gameRepository, never()).save(any());
     }
 
-    // ========== updateGame - Branches critiques ==========
+    // -------------------------------------------------------------------------
+    // updateGame — branches
+    // -------------------------------------------------------------------------
 
     @Test
-    void updateGame_ShouldUpdateGame_WhenValidRequest() {
-        GameRequest request = new GameRequest();
+    void updateGame_ShouldUpdateAndReturnWithRating_WhenValid() {
+        GameRequest request = buildValidGameRequest();
         request.setName("7 Wonders Édité");
-        request.setPrice(45.99);
-        request.setMinPlayers(2);
-        request.setMaxPlayers(7);
-        request.setPlayingTime(40);
-        request.setCategoryId(1L);
-        request.setPublisherId(1L);
-        request.setAuthorIds(Arrays.asList(1L));
-
         when(gameRepository.findById(1L)).thenReturn(Optional.of(testGame));
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
         when(publisherRepository.findById(1L)).thenReturn(Optional.of(testPublisher));
-        when(authorRepository.findAllById(Arrays.asList(1L))).thenReturn(Arrays.asList(testAuthor));
+        when(authorRepository.findAllById(any())).thenReturn(Arrays.asList(testAuthor));
         when(gameRepository.save(any(Game.class))).thenReturn(testGame);
+        when(ratingRepository.calculateAverageRatingForGame(1L)).thenReturn(6.0);
+        when(ratingRepository.countRatingsByGameId(1L)).thenReturn(3L);
 
         GameResponse game = gameService.updateGame(1L, request);
 
         assertThat(game).isNotNull();
-        verify(gameRepository, times(1)).save(any(Game.class));
+        assertThat(game.getAverageRating()).isEqualTo(6.0);
+        verify(gameRepository).save(any(Game.class));
     }
 
     @Test
     void updateGame_ShouldThrowException_WhenGameNotFound() {
-        // Branch : Jeu à modifier introuvable
-        GameRequest request = new GameRequest();
-        request.setName("Jeu édité");
-
         when(gameRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> gameService.updateGame(999L, request))
+        assertThatThrownBy(() -> gameService.updateGame(999L, buildValidGameRequest()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Jeu non trouvé");
 
-        verify(gameRepository, never()).save(any(Game.class));
+        verify(gameRepository, never()).save(any());
+        verifyNoInteractions(ratingRepository);
     }
 
-    // ========== deleteGame ==========
+    // -------------------------------------------------------------------------
+    // deleteGame
+    // -------------------------------------------------------------------------
 
     @Test
-    void deleteGame_ShouldDeleteGame_WhenGameExists() {
+    void deleteGame_ShouldDelete_WhenExists() {
         when(gameRepository.existsById(1L)).thenReturn(true);
-        doNothing().when(gameRepository).deleteById(1L);
 
         gameService.deleteGame(1L);
 
-        verify(gameRepository, times(1)).existsById(1L);
-        verify(gameRepository, times(1)).deleteById(1L);
+        verify(gameRepository).deleteById(1L);
     }
 
     @Test
-    void deleteGame_ShouldThrowException_WhenGameNotFound() {
+    void deleteGame_ShouldThrowException_WhenNotFound() {
         when(gameRepository.existsById(999L)).thenReturn(false);
 
         assertThatThrownBy(() -> gameService.deleteGame(999L))
@@ -287,5 +283,21 @@ class GameServiceTest {
                 .hasMessageContaining("Jeu non trouvé");
 
         verify(gameRepository, never()).deleteById(anyLong());
+    }
+
+    // -------------------------------------------------------------------------
+    // Méthode utilitaire
+    // -------------------------------------------------------------------------
+
+    private GameRequest buildValidGameRequest() {
+        GameRequest request = new GameRequest();
+        request.setName("Nouveau jeu");
+        request.setPrice(29.99);
+        request.setMinPlayers(2);
+        request.setMaxPlayers(4);
+        request.setCategoryId(1L);
+        request.setPublisherId(1L);
+        request.setAuthorIds(Arrays.asList(1L));
+        return request;
     }
 }

@@ -48,7 +48,7 @@ mvn spring-boot:run
 
 ## Tests
 ```bash
-mvn test
+mvn clean test
 mvn jacoco:report
 ```
 
@@ -57,24 +57,3 @@ Le rapport de couverture sera disponible dans `target/site/jacoco/index.html`
 ## Compte admin par défaut
 - Username: `admin`
 - Password: `admin123`
-
-⚠️ **À changer en production !**
-```
-
----
-
-## 📦 Structure finale du projet
-```
-gamesUP/
-├── .env                    # ❌ Non versionné (gitignore)
-├── .env.example            # ✅ Versionné (template)
-├── .gitignore              # ✅ Contient .env
-├── README.md               # ✅ Instructions d'installation
-├── pom.xml
-└── src/
-    ├── main/
-    │   └── resources/
-    │       └── application.properties  # Utilise ${JWT_SECRET}
-    └── test/
-        └── resources/
-            └── application-test.properties
